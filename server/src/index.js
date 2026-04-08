@@ -31,14 +31,14 @@ const server = http.createServer(app);
 
 // ─── Allowed origins for CORS ─────────────────────────────────────────────
 const allowedOrigins = [
-  (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '') // remove trailing slash if any
+  (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, ''),
+  'https://sport-academy-woad.vercel.app' // add your deployed frontend URL explicitly
 ];
 
 // ─── Middleware ────────────────────────────────────────────────────────────
 app.use(cors({
   origin: function(origin, callback) {
-    // allow non-browser tools like Postman
-    if (!origin) return callback(null, true);
+    if (!origin) return callback(null, true); // allow Postman / curl
     if (!allowedOrigins.includes(origin)) {
       return callback(new Error(`CORS blocked for origin ${origin}`), false);
     }
@@ -46,12 +46,33 @@ app.use(cors({
   },
   credentials: true,
 }));
+
+// Handle preflight requests globally
+app.options('*', cors({ origin: allowedOrigins, credentials: true }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Attach Socket.IO to request
+// ─── Socket.IO ─────────────────────────────────────────────────────────────
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+});
+
+// Attach io to request AFTER io is defined
 app.use((req, _res, next) => { req.io = io; next(); });
+
+io.on('connection', (socket) => {
+  socket.on('join', (userId) => {
+    socket.join(userId);
+    console.log(`User ${userId} joined their notification room`);
+  });
+  socket.on('disconnect', () => {});
+});
 
 // ─── Routes ────────────────────────────────────────────────────────────────
 app.use('/api/auth',          authRoutes);
@@ -82,26 +103,8 @@ app.use((err, _req, res, _next) => {
   res.status(err.status || 500).json({ message: err.message || 'Internal server error' });
 });
 
-// ─── Socket.IO ─────────────────────────────────────────────────────────────
-const io = new Server(server, {
-  cors: {
-    origin: allowedOrigins,
-    methods: ['GET','POST'],
-    credentials: true,
-  },
-});
-
-io.on('connection', (socket) => {
-  socket.on('join', (userId) => {
-    socket.join(userId);
-    console.log(`User ${userId} joined their notification room`);
-  });
-  socket.on('disconnect', () => {});
-});
-
 // ─── DB + Server Start ─────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-
 console.log('MONGODB_URI loaded:', process.env.MONGODB_URI ? 'YES' : 'NO');
 
 mongoose
