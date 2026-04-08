@@ -1,6 +1,6 @@
 require('dotenv').config({ override: true });
 const dns = require('dns');
-dns.setServers(['8.8.8.8', '1.1.1.1']); // Fix for Atlas SRV resolution over some ISPs
+dns.setServers(['8.8.8.8', '1.1.1.1']); // Fix for Atlas SRV resolution
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -8,6 +8,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path');
 
+// ─── Routes ────────────────────────────────────────────────────────────────
 const authRoutes         = require('./routes/auth');
 const bookingRoutes      = require('./routes/bookings');
 const paymentRoutes      = require('./routes/payments');
@@ -24,25 +25,35 @@ const inventoryRoutes    = require('./routes/inventory');
 const reportsRoutes      = require('./routes/reports');
 const settingsRoutes     = require('./routes/settings');
 
-const app    = express();
+// ─── App & Server ──────────────────────────────────────────────────────────
+const app = express();
 const server = http.createServer(app);
-const io     = new Server(server, {
-  cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    methods: ['GET', 'POST'],
-  },
-});
 
-// ─── Middleware ───────────────────────────────────────────────────────────────
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
+// ─── Allowed origins for CORS ─────────────────────────────────────────────
+const allowedOrigins = [
+  (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '') // remove trailing slash if any
+];
+
+// ─── Middleware ────────────────────────────────────────────────────────────
+app.use(cors({
+  origin: function(origin, callback) {
+    // allow non-browser tools like Postman
+    if (!origin) return callback(null, true);
+    if (!allowedOrigins.includes(origin)) {
+      return callback(new Error(`CORS blocked for origin ${origin}`), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Attach io to req so routes can emit events
+// Attach Socket.IO to request
 app.use((req, _res, next) => { req.io = io; next(); });
 
-// ─── Routes ──────────────────────────────────────────────────────────────────
+// ─── Routes ────────────────────────────────────────────────────────────────
 app.use('/api/auth',          authRoutes);
 app.use('/api/bookings',      bookingRoutes);
 app.use('/api/payments',      paymentRoutes);
@@ -71,7 +82,15 @@ app.use((err, _req, res, _next) => {
   res.status(err.status || 500).json({ message: err.message || 'Internal server error' });
 });
 
-// ─── Socket.IO ───────────────────────────────────────────────────────────────
+// ─── Socket.IO ─────────────────────────────────────────────────────────────
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ['GET','POST'],
+    credentials: true,
+  },
+});
+
 io.on('connection', (socket) => {
   socket.on('join', (userId) => {
     socket.join(userId);
@@ -80,7 +99,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {});
 });
 
-// ─── DB + Server Start ────────────────────────────────────────────────────────
+// ─── DB + Server Start ─────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
 console.log('MONGODB_URI loaded:', process.env.MONGODB_URI ? 'YES' : 'NO');
