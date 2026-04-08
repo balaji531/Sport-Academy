@@ -9,7 +9,8 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const stored = localStorage.getItem('sf_user');
-    const token  = localStorage.getItem('sf_token');
+    const token = localStorage.getItem('sf_token');
+
     if (stored && token) {
       try {
         setUser(JSON.parse(stored));
@@ -18,23 +19,35 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('sf_token');
       }
     }
+
     setLoading(false);
   }, []);
 
   const login = async (email, password) => {
     const { data } = await authAPI.login({ email, password });
-    localStorage.setItem('sf_token', data.token);
-    localStorage.setItem('sf_user', JSON.stringify(data));
-    setUser(data);
-    return data;
+
+    // Handle both possible backend response formats
+    const token = data.token;
+    const userData = data.user || data;
+
+    localStorage.setItem('sf_token', token);
+    localStorage.setItem('sf_user', JSON.stringify(userData));
+
+    setUser(userData);
+    return userData;
   };
 
   const register = async (formData) => {
     const { data } = await authAPI.register(formData);
-    localStorage.setItem('sf_token', data.token);
-    localStorage.setItem('sf_user', JSON.stringify(data));
-    setUser(data);
-    return data;
+
+    const token = data.token;
+    const userData = data.user || data;
+
+    localStorage.setItem('sf_token', token);
+    localStorage.setItem('sf_user', JSON.stringify(userData));
+
+    setUser(userData);
+    return userData;
   };
 
   const logout = () => {
