@@ -1,8 +1,11 @@
+// api-Bdk_tc-h.js
 import axios from 'axios';
 
+// Base URL points to your Render backend
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL + '/api', 
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true, // send cookies if needed
 });
 
 // Attach JWT token to every request
@@ -12,15 +15,15 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 globally
+// Global 401 handler
 api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
       localStorage.removeItem('sf_token');
       localStorage.removeItem('sf_user');
-      
-      // Determine correct login redirect
+
+      // Redirect to proper login page
       if (window.location.pathname.startsWith('/admin')) {
         window.location.href = '/admin/login';
       } else {
@@ -43,7 +46,7 @@ export const authAPI = {
 export const bookingsAPI = {
   getAvailability: (sport, date) => api.get(`/bookings/availability?sport=${sport}&date=${date}`),
   getMyBookings:   () => api.get('/bookings/my'),
-  getAllBookings:   (params) => api.get('/bookings/all', { params }),
+  getAllBookings:  (params) => api.get('/bookings/all', { params }),
   create:          (data) => api.post('/bookings', data),
   confirm:         (id, paymentId) => api.put(`/bookings/${id}/confirm`, { paymentId }),
   cancel:          (id) => api.put(`/bookings/${id}/cancel`),
@@ -72,10 +75,10 @@ export const eventsAPI = {
 
 // ---- MEMBERSHIPS ----
 export const membershipsAPI = {
-  getPlans:   () => api.get('/memberships/plans'),
-  getMy:      () => api.get('/memberships/my'),
-  getAll:     () => api.get('/memberships/all'),
-  purchase:   (data) => api.post('/memberships/purchase', data),
+  getPlans: () => api.get('/memberships/plans'),
+  getMy:    () => api.get('/memberships/my'),
+  getAll:   () => api.get('/memberships/all'),
+  purchase: (data) => api.post('/memberships/purchase', data),
 };
 
 // ---- ATTENDANCE ----
@@ -87,19 +90,19 @@ export const attendanceAPI = {
 
 // ---- NOTIFICATIONS ----
 export const notificationsAPI = {
-  getMy:     () => api.get('/notifications/my'),
-  markRead:  (id) => api.put(`/notifications/${id}/read`),
+  getMy:       () => api.get('/notifications/my'),
+  markRead:    (id) => api.put(`/notifications/${id}/read`),
   markAllRead: () => api.put('/notifications/read-all'),
-  send:      (data) => api.post('/notifications/send', data),
+  send:        (data) => api.post('/notifications/send', data),
 };
 
 // ---- ADMIN ----
 export const adminAPI = {
-  getStats:      () => api.get('/admin/stats'),
-  getUsers:      (params) => api.get('/admin/users', { params }),
-  updateUser:    (id, data) => api.put(`/admin/users/${id}`, data),
-  deleteUser:    (id) => api.delete(`/admin/users/${id}`),
-  updateFeeStatus: (id, data) => api.put(`/admin/users/${id}/fee-status`, data),
+  getStats:       () => api.get('/admin/stats'),
+  getUsers:       (params) => api.get('/admin/users', { params }),
+  updateUser:     (id, data) => api.put(`/admin/users/${id}`, data),
+  deleteUser:     (id) => api.delete(`/admin/users/${id}`),
+  updateFeeStatus:(id, data) => api.put(`/admin/users/${id}/fee-status`, data),
 };
 
 // ---- SPORTS / PROGRAMS ----
@@ -161,4 +164,3 @@ export const settingsAPI = {
 };
 
 export default api;
-
