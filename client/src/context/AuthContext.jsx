@@ -8,45 +8,88 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem('sf_user');
-    const token = localStorage.getItem('sf_token');
+    const initAuth = async () => {
+      const token = localStorage.getItem('sf_token');
 
-    if (stored && token) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch (e) {
-        localStorage.removeItem('sf_user');
-        localStorage.removeItem('sf_token');
+      if (!token) {
+        setLoading(false);
+        return;
       }
-    }
 
-    setLoading(false);
+      try {
+        // Validate token with backend
+        const { data } = await authAPI.me();
+
+        // Handle both response shapes
+        const userData = data.user || data.data?.user || data.data || data;
+
+        localStorage.setItem('sf_user', JSON.stringify(userData));
+        setUser(userData);
+      } catch (err) {
+        console.error('Auth init failed:', err);
+        localStorage.removeItem('sf_token');
+        localStorage.removeItem('sf_user');
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
   }, []);
 
   const login = async (email, password) => {
     const { data } = await authAPI.login({ email, password });
 
-    // Handle both possible backend response formats
-    const token = data.token;
-    const userData = data.user || data;
+    console.log('LOGIN RESPONSE:', data);
+
+    // Support multiple backend response shapes
+    const token =
+      data.token ||
+      data.data?.token ||
+      data.accessToken ||
+      data.data?.accessToken;
+
+    const userData =
+      data.user ||
+      data.data?.user ||
+      data.data ||
+      data;
+
+    if (!token) {
+      throw new Error('No token returned from login API');
+    }
 
     localStorage.setItem('sf_token', token);
     localStorage.setItem('sf_user', JSON.stringify(userData));
-
     setUser(userData);
+
     return userData;
   };
 
   const register = async (formData) => {
     const { data } = await authAPI.register(formData);
 
-    const token = data.token;
-    const userData = data.user || data;
+    const token =
+      data.token ||
+      data.data?.token ||
+      data.accessToken ||
+      data.data?.accessToken;
+
+    const userData =
+      data.user ||
+      data.data?.user ||
+      data.data ||
+      data;
+
+    if (!token) {
+      throw new Error('No token returned from register API');
+    }
 
     localStorage.setItem('sf_token', token);
     localStorage.setItem('sf_user', JSON.stringify(userData));
-
     setUser(userData);
+
     return userData;
   };
 
