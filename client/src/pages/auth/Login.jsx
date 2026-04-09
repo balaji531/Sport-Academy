@@ -18,26 +18,45 @@ export default function Login() {
   ];
 
   const onSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const user = await login(form.email, form.password);
-      if (user.role !== role && role !== 'admin') {
-        toast.error(`This account is a ${user.role} account, not ${role}`);
-        return;
-      }
-      toast.success(`Welcome back, ${user.name}! 🎉`);
-      if (user.role === 'admin') {
-        window.location.href = '/admin/';
-      } else {
-        navigate(`/dashboard/${user.role}`);
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Login failed');
-    } finally {
-      setLoading(false);
+  e.preventDefault();
+  setLoading(true);
+
+  try {
+    const loggedInUser = await login(form.email, form.password);
+
+    // Normalize role from backend
+    const normalizedRole = String(loggedInUser.role || '')
+      .trim()
+      .toLowerCase();
+
+    console.log('Logged in user:', loggedInUser);
+    console.log('Raw role from backend:', loggedInUser.role);
+    console.log('Normalized role:', normalizedRole);
+    console.log('Selected role tab:', role);
+
+    if (normalizedRole !== role) {
+      toast.error(`This account is a ${normalizedRole || 'unknown'} account, not ${role}`);
+      return;
     }
-  };
+
+    toast.success(`Welcome back, ${loggedInUser.name}! 🎉`);
+
+    if (normalizedRole === 'admin') {
+      window.location.href = '/admin/';
+    } else if (normalizedRole === 'student') {
+      navigate('/dashboard/student', { replace: true });
+    } else if (normalizedRole === 'member') {
+      navigate('/dashboard/member', { replace: true });
+    } else {
+      toast.error(`Unsupported role: ${loggedInUser.role}`);
+    }
+  } catch (err) {
+    console.error('Login failed:', err.response?.data || err);
+    toast.error(err.response?.data?.message || 'Login failed');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', fontFamily: "'Inter', sans-serif" }}>
