@@ -8,97 +8,48 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const initAuth = async () => {
-      const token = localStorage.getItem('sf_token');
+    const stored = localStorage.getItem('sf_user');
+    const token = localStorage.getItem('sf_token');
 
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
+    if (stored && token) {
       try {
-        // Validate token with backend
-        const { data } = await authAPI.me();
-
-        // Handle both response shapes
-        const userData = data.user || data.data?.user || data.data || data;
-
-        localStorage.setItem('sf_user', JSON.stringify(userData));
-        setUser(userData);
-      } catch (err) {
-        console.error('Auth init failed:', err);
-        localStorage.removeItem('sf_token');
+        setUser(JSON.parse(stored));
+      } catch (e) {
         localStorage.removeItem('sf_user');
-        setUser(null);
-      } finally {
-        setLoading(false);
+        localStorage.removeItem('sf_token');
       }
-    };
+    }
 
-    initAuth();
+    setLoading(false);
   }, []);
 
   const login = async (email, password) => {
-  const { data } = await authAPI.login({ email, password });
+    const { data } = await authAPI.login({ email, password });
 
-  // If backend returns { token, user }
-  const token = data.token;
-  const userData = data.user || data;
+    console.log('LOGIN API RESPONSE:', data);
 
-  localStorage.setItem('sf_token', token);
-  localStorage.setItem('sf_user', JSON.stringify(userData));
-
-  setUser(userData);
-  return userData;
-};
-
-    // Support multiple backend response shapes
-    const token =
-      data.token ||
-      data.data?.token ||
-      data.accessToken ||
-      data.data?.accessToken;
-
-    const userData =
-      data.user ||
-      data.data?.user ||
-      data.data ||
-      data;
-
-    if (!token) {
-      throw new Error('No token returned from login API');
-    }
+    const token = data.token;
+    const userData = data.user || data;
 
     localStorage.setItem('sf_token', token);
     localStorage.setItem('sf_user', JSON.stringify(userData));
-    setUser(userData);
 
+    setUser(userData);
     return userData;
   };
 
   const register = async (formData) => {
     const { data } = await authAPI.register(formData);
 
-    const token =
-      data.token ||
-      data.data?.token ||
-      data.accessToken ||
-      data.data?.accessToken;
+    console.log('REGISTER API RESPONSE:', data);
 
-    const userData =
-      data.user ||
-      data.data?.user ||
-      data.data ||
-      data;
-
-    if (!token) {
-      throw new Error('No token returned from register API');
-    }
+    const token = data.token;
+    const userData = data.user || data;
 
     localStorage.setItem('sf_token', token);
     localStorage.setItem('sf_user', JSON.stringify(userData));
-    setUser(userData);
 
+    setUser(userData);
     return userData;
   };
 
@@ -115,7 +66,16 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        logout,
+        updateUser,
+      }}
+    >
       {!loading && children}
     </AuthContext.Provider>
   );
