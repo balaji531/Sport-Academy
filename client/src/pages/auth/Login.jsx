@@ -24,16 +24,25 @@ export default function Login() {
   try {
     const loggedInUser = await login(form.email, form.password);
 
-    // Normalize role from backend
-    const normalizedRole = String(loggedInUser.role || '')
-      .trim()
-      .toLowerCase();
+    const rawRole = String(loggedInUser.role || '').trim().toLowerCase();
 
-    console.log('Logged in user:', loggedInUser);
-    console.log('Raw role from backend:', loggedInUser.role);
+    // normalize possible backend role values
+    const roleMap = {
+      'student': 'student',
+      'student / parent': 'student',
+      'parent': 'student',
+      'member': 'member',
+      'admin': 'admin',
+    };
+
+    const normalizedRole = roleMap[rawRole] || rawRole;
+
+    console.log('Login success:', loggedInUser);
+    console.log('Raw role:', rawRole);
     console.log('Normalized role:', normalizedRole);
-    console.log('Selected role tab:', role);
+    console.log('Expected login role:', role);
 
+    // prevent wrong portal login
     if (normalizedRole !== role) {
       toast.error(`This account is a ${normalizedRole || 'unknown'} account, not ${role}`);
       return;
@@ -41,12 +50,12 @@ export default function Login() {
 
     toast.success(`Welcome back, ${loggedInUser.name}! 🎉`);
 
-    if (normalizedRole === 'admin') {
-      window.location.href = '/admin/';
-    } else if (normalizedRole === 'student') {
+    if (normalizedRole === 'student') {
       navigate('/dashboard/student', { replace: true });
     } else if (normalizedRole === 'member') {
       navigate('/dashboard/member', { replace: true });
+    } else if (normalizedRole === 'admin') {
+      window.location.href = '/admin/';
     } else {
       toast.error(`Unsupported role: ${loggedInUser.role}`);
     }
