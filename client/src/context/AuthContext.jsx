@@ -39,9 +39,18 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-    const { data } = await authAPI.login({ email, password });
+  const { data } = await authAPI.login({ email, password });
 
-    console.log('LOGIN RESPONSE:', data);
+  // If backend returns { token, user }
+  const token = data.token;
+  const userData = data.user || data;
+
+  localStorage.setItem('sf_token', token);
+  localStorage.setItem('sf_user', JSON.stringify(userData));
+
+  setUser(userData);
+  return userData;
+};
 
     // Support multiple backend response shapes
     const token =
